@@ -18,6 +18,7 @@ async def launch_browser(settings: Settings) -> Browser:
         browser = await playwright.chromium.launch(
             channel=settings.browser_channel,
             headless=settings.browser_headless,
+            args=settings.browser_args,
         )
         try:
             yield browser
@@ -25,11 +26,14 @@ async def launch_browser(settings: Settings) -> Browser:
             await browser.close()
 
 
+@inject
 @asynccontextmanager
-async def new_browser_context() -> BrowserContext:
+async def new_browser_context(settings: Settings) -> BrowserContext:
     async with launch_browser() as browser:
         browser: Browser
-        context = await browser.new_context()
+        context = await browser.new_context(
+            no_viewport=settings.browser_no_viewport
+        )
         try:
             yield context
         finally:
