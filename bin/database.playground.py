@@ -1,16 +1,18 @@
 import asyncio
+from time import time
 
-from sqlmodel import Session, SQLModel, create_engine, select
+from kink import inject
+from sqlalchemy import Engine
+from sqlmodel import Session, select
 
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
 
 
-async def main():
-    engine = create_engine("sqlite:///data.db", echo=False)
-    SQLModel.metadata.create_all(engine)
+@inject
+async def main(engine: Engine):
     with Session(engine) as session, session.begin():
         publication = PropertyPublication(
-            url="https://test-04.com",
+            url=f"https://test-{time()}.com",
             broker="broker-01",
             publisher="publisher-01",
             proposal=ProposalType.SELL,
