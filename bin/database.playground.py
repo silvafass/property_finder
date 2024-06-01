@@ -1,3 +1,5 @@
+#!.venv/bin/python
+
 import asyncio
 from time import time
 

@@ -2,3 +2,4 @@ pre-commit==3.7.1
 sqlmodel==0.0.18
 kink==0.8.0
 pydantic-settings==2.2.1
+playwright==1.44.0
