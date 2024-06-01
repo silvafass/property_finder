@@ -1,6 +1,6 @@
 from kink import di, inject
 from sqlalchemy import Engine
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.settings import Settings
 
@@ -12,6 +12,12 @@ def db_setup(settings: Settings) -> Engine:
     return engine
 
 
+@inject
+def db_session(engine: Engine):
+    return Session(engine)
+
+
 def bootstrap_di() -> None:
     di[Settings] = Settings()
-    di[Engine] = lambda di: db_setup()
+    di[Engine] = lambda _: db_setup()
+    di[Session] = lambda _: db_session()
