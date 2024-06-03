@@ -54,3 +54,24 @@ async def load_page(
             yield page
         finally:
             await page.close()
+
+
+class PageHelper:
+
+    @staticmethod
+    async def scroll_to_end(page: Page, pixels_to_scroll: int = 10):
+        page_offsetHeight = None
+        while page_offsetHeight != await page.evaluate(
+            "document.body.offsetHeight"
+        ):
+            previous_page_offsetHeight = page_offsetHeight or 0
+            page_offsetHeight = await page.evaluate(
+                "document.body.offsetHeight"
+            )
+            remaning_wheel = (
+                page_offsetHeight - previous_page_offsetHeight
+            ) / pixels_to_scroll
+            remaning_wheel = int(remaning_wheel)
+            for _ in range(remaning_wheel):
+                await page.mouse.wheel(0, pixels_to_scroll)
+                await page.wait_for_timeout(int(pixels_to_scroll / 2))

@@ -14,6 +14,9 @@ class ProposalType(StrEnum):
 class PropertyType(StrEnum):
     HOUSE = auto()
     APTO = auto()
+    CONDO_HOUSE = auto()
+    TOWNHOUSES = auto()
+    OTHERS = auto()
 
 
 class PropertyPublication(SQLModel, table=True):
@@ -23,10 +26,10 @@ class PropertyPublication(SQLModel, table=True):
     details: Optional[str] = None
     printscreen: Optional[bytes] = None
     address: Optional[str] = None
-    broker: str
-    publisher: str
-    proposal: str
-    type: str
+    broker: Optional[str] = None
+    publisher: Optional[str] = None
+    proposal: Optional[str] = None
+    type: Optional[str] = None
 
     square_meter: Optional[int] = None
     bedrooms: Optional[int] = None
@@ -36,7 +39,7 @@ class PropertyPublication(SQLModel, table=True):
     floor: Optional[int] = None
     balcony: Optional[int] = None
 
-    price: float
+    price: Optional[float] = None
     iptu_value: Optional[float] = None
     maintenance_fee_value: Optional[float] = None
 
