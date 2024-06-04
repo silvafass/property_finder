@@ -5,6 +5,12 @@ from time import time
 
 from app.domains import publications
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 async def main():
@@ -21,7 +27,7 @@ async def main():
 
     for publication in publications.get_all():
         publication: PropertyPublication
-        print(
+        logger.info(
             publication.model_dump_json(
                 indent=2, include=["url", "created_at"]
             )

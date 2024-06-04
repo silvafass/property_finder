@@ -3,6 +3,10 @@ from playwright.async_api import Page
 from app.domains.browser import load_page
 from pydantic import BaseModel
 from typing import Self
+import logging
+from time import time
+
+logger = logging.getLogger(__name__)
 
 
 class Searcher(ABC):
@@ -19,12 +23,24 @@ class Publisher(ABC):
     searcherTypes: type[Searcher] = set()
 
     async def process(self) -> Self:
+        processing_start_time = time()
+        logger.info("Processing search on %s (%s)", self.name, self.website)
         for searcherType in self.searcherTypes:
             async with load_page(self.website) as page:
                 page: Page
                 searcherType: type[Searcher]
+                logger.info("Running %s...", searcherType.__name__)
                 await searcherType().search(page)
+                inspecting_start_time = time()
+                logger.info("Inspecting search result: %s", await page.title())
                 await self.inspec(page)
+                logger.info(
+                    "Inspection completed (%s seconds)",
+                    time() - inspecting_start_time,
+                )
+        logger.info(
+            "Processing completed (%s seconds)", time() - processing_start_time
+        )
         return self
 
     @abstractmethod

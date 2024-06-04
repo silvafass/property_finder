@@ -6,7 +6,9 @@ from app.domains import publications
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
 import re
 from enum import auto
-import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 property_type_mapper = dict(
     apartamento=PropertyType.APTO,
@@ -29,11 +31,11 @@ class BaseSearcher(Searcher):
         await page.get_by_text("Entendi").click()
         for location in [
             "Vila Cascatinha, São Vicente - SP",
-            # "Vila Valença, São Vicente - SP",
-            # "Boa Vista, São Vicente - SP",
-            # "Pompeia, Santos - SP",
-            # "Campo Grande, Santos - SP",
-            # "Embaré, Santos - SP",
+            "Vila Valença, São Vicente - SP",
+            "Boa Vista, São Vicente - SP",
+            "Pompeia, Santos - SP",
+            "Campo Grande, Santos - SP",
+            "Embaré, Santos - SP",
         ]:
             await page.get_by_label("Onde deseja morar?").fill(location)
             await page.get_by_label(location).check()
@@ -168,20 +170,26 @@ class ZapImoveis(Publisher):
     )
 
     async def inspec(self, page: Page) -> Self:
+        publication_count = []
         while True:
             await page.wait_for_timeout(1000 * 5)
 
+            logger.info("Scrolling down to the end of the page...")
             await PageHelper.scroll_to_end(page, pixels_to_scroll=400)
 
             result_card_locator = page.locator("a.result-card")
-            print("card_count", await result_card_locator.count())
+            publication_count.append(await result_card_locator.count())
+            logger.info(
+                "%s publication(s) found on page %s",
+                publication_count[-1],
+                len(publication_count),
+            )
+
             for result_card in await result_card_locator.all():
                 await result_card.scroll_into_view_if_needed()
                 publication = await ResultCardMapper(result_card).get_dict(
                     PropertyPublication
                 )
-                print(json.dumps(publication, indent=2))
-
                 publications.save(publication)
 
             buttton_next_locator = page.locator(
@@ -189,9 +197,9 @@ class ZapImoveis(Publisher):
                 "button[aria-label='Próxima página']"
             ).first
             if await buttton_next_locator.is_visible():
+                logger.info("Going to next page...")
                 await buttton_next_locator.scroll_into_view_if_needed()
                 await buttton_next_locator.click()
             else:
                 break
-
-        print(await page.title())
+        logger.info("Total of %s publication(s) found", sum(publication_count))

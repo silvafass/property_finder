@@ -4,6 +4,11 @@ import asyncio
 from typing import List
 from app.domains.publisher import Publisher
 from kink import inject
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s - %(message)s"
+)
 
 
 @inject()
