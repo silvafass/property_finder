@@ -40,8 +40,8 @@ class PropertyPublication(SQLModel, table=True):
     balcony: Optional[int] = None
 
     price: Optional[float] = None
-    iptu_value: Optional[float] = None
-    maintenance_fee_value: Optional[float] = None
+    iptu_tax: Optional[float] = None
+    condominium_fee: Optional[float] = None
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

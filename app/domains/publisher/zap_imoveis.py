@@ -7,6 +7,7 @@ from app.domains.models import PropertyPublication, PropertyType, ProposalType
 import re
 from enum import auto
 import logging
+from app.settings import PublisherSearchSettings
 
 logger = logging.getLogger(__name__)
 
@@ -27,26 +28,19 @@ proposal_type_mapper = dict(
 
 class BaseSearcher(Searcher):
 
+    publisherSearchSettings: PublisherSearchSettings = (
+        PublisherSearchSettings()
+    )
+
     async def search(self, page: Page):
+        base_search = self.publisherSearchSettings.base_search
         await page.get_by_text("Entendi").click()
-        for location in [
-            "Vila Cascatinha, São Vicente - SP",
-            "Vila Valença, São Vicente - SP",
-            "Boa Vista, São Vicente - SP",
-            "Pompeia, Santos - SP",
-            "Campo Grande, Santos - SP",
-            "Embaré, Santos - SP",
-        ]:
+        for location in base_search.locations:
             await page.get_by_label("Onde deseja morar?").fill(location)
             await page.get_by_label(location).check()
 
         await page.get_by_label("Tipo de imóvel").click()
-        for property_type in [
-            "Apartamento",
-            "Casa",
-            "Sobrado",
-            "Casa de Condomínio",
-        ]:
+        for property_type in base_search.property_types:
             await page.get_by_label(property_type, exact=True).check()
         await page.get_by_text("Buscar").click()
 
@@ -54,6 +48,7 @@ class BaseSearcher(Searcher):
 class BuySearcher(BaseSearcher):
 
     async def search(self, page: Page):
+        buying_search = self.publisherSearchSettings.buying_search
         await page.get_by_role("tab", name="Comprar").click()
 
         await super().search(page)
@@ -61,16 +56,25 @@ class BuySearcher(BaseSearcher):
         await page.get_by_role("button", name="Ordenar por").click()
         await page.get_by_text("Mais recente").click()
 
-        await page.get_by_label("Máximo").first.fill("400000")
-        await page.get_by_label("Máximo").nth(1).fill("500")
-        await page.get_by_label("Máximo").nth(2).fill("75")
+        await page.get_by_label("Máximo").first.fill(
+            str(int(buying_search.maximum_price))
+        )
+        await page.get_by_label("Máximo").nth(1).fill(
+            str(int(buying_search.maximum_condominium_fee))
+        )
+        await page.get_by_label("Máximo").nth(2).fill(
+            str(buying_search.maximum_square_meter)
+        )
 
-        # # Bathroom
-        # await page.get_by_role("button", name="2").first.click()
-        # await page.get_by_role("button", name="3").first.click()
+        for num_bathrooms in buying_search.bathrooms:
+            await page.get_by_role(
+                "button", name=str(num_bathrooms)
+            ).first.click()
 
-        await page.get_by_role("button", name="2").nth(1).click()
-        await page.get_by_role("button", name="3").nth(1).click()
+        for num_bedrooms in buying_search.bedrooms:
+            await page.get_by_role("button", name=str(num_bedrooms)).nth(
+                1
+            ).click()
 
         await page.get_by_text("Buscar Imóveis").click()
 
@@ -78,6 +82,7 @@ class BuySearcher(BaseSearcher):
 class RentSearcher(BaseSearcher):
 
     async def search(self, page: Page):
+        renting_search = self.publisherSearchSettings.renting_search
         await page.get_by_role("tab", name="Alugar").click()
 
         await super().search(page)
@@ -85,17 +90,25 @@ class RentSearcher(BaseSearcher):
         await page.get_by_role("button", name="Ordenar por").click()
         await page.get_by_text("Mais recente").click()
 
-        await page.get_by_label("Máximo").first.fill("2600")
-        await page.get_by_label("Máximo").nth(1).fill("75")
+        await page.get_by_label("Máximo").first.fill(
+            str(int(renting_search.maximum_price))
+        )
+        await page.get_by_label("Máximo").nth(1).fill(
+            str(renting_search.maximum_square_meter)
+        )
 
-        await page.get_by_text("Incluir preço do condomínio").click()
+        if renting_search.include_condominium_fee:
+            await page.get_by_text("Incluir preço do condomínio").click()
 
-        # # Bathroom
-        # await page.get_by_role("button", name="2").first.click()
-        # await page.get_by_role("button", name="3").first.click()
+        for num_bathrooms in renting_search.bathrooms:
+            await page.get_by_role(
+                "button", name=str(num_bathrooms)
+            ).first.click()
 
-        await page.get_by_role("button", name="2").nth(1).click()
-        await page.get_by_role("button", name="3").nth(1).click()
+        for num_bedrooms in renting_search.bedrooms:
+            await page.get_by_role("button", name=str(num_bedrooms)).nth(
+                1
+            ).click()
 
         await page.get_by_text("Buscar Imóveis").click()
 
@@ -133,7 +146,7 @@ class ResultCardMapper(ModelMapper):
     async def _prices(self) -> str:
         return await self._result_card.locator(".listing-price").text_content()
 
-    async def maintenance_fee_value(self) -> float:
+    async def condominium_fee(self) -> float:
         match = re.search(r"Cond\. R\$ [0-9.]+", await self._prices())
         return (
             float(match[0].replace("Cond. R$ ", "").replace(".", ""))
@@ -141,7 +154,7 @@ class ResultCardMapper(ModelMapper):
             else None
         )
 
-    async def iptu_value(self) -> float:
+    async def iptu_tax(self) -> float:
         match = re.search(r"IPTU R\$ [0-9.]+", await self._prices())
         return (
             float(match[0].replace("IPTU R$ ", "").replace(".", ""))
@@ -175,7 +188,7 @@ class ZapImoveis(Publisher):
             await page.wait_for_timeout(1000 * 5)
 
             logger.info("Scrolling down to the end of the page...")
-            await PageHelper.scroll_to_end(page, pixels_to_scroll=400)
+            await PageHelper.scroll_to_end(page, pixels_to_scroll=100)
 
             result_card_locator = page.locator("a.result-card")
             publication_count.append(await result_card_locator.count())
