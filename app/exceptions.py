@@ -1,0 +1,2 @@
+class HiddenElementError(Exception):
+    pass

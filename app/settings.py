@@ -13,6 +13,7 @@ class SearchSettings(BaseSettings):
     maximum_price: Optional[float] = None
     maximum_condominium_fee: Optional[float] = None
     include_condominium_fee: Optional[bool] = None
+    minimum_square_meter: Optional[int] = None
     maximum_square_meter: Optional[int] = None
     bathrooms: List[int] = []
     bedrooms: List[int] = []
@@ -59,9 +60,9 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     browser_headless: bool = False
-    browser_channel: str = "chromium"
-    # browser_args: list[str] = ["--start-maximized"]
-    browser_args: list[str] = []
+    browser_channel: str = "firefox"
+    # browser_args: List[str] = ["--start-maximized"]
+    browser_args: List[str] = []
     # browser_no_viewport: bool = True
     browser_no_viewport: bool = False
 

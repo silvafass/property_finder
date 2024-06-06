@@ -15,7 +15,7 @@ from app.settings import Settings
 @asynccontextmanager
 async def launch_browser(settings: Settings) -> Browser:
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(
+        browser = await playwright.firefox.launch(
             channel=settings.browser_channel,
             headless=settings.browser_headless,
             args=settings.browser_args,
