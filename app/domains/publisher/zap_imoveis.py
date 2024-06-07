@@ -247,11 +247,27 @@ class ZapImoveis(Publisher):
         publication_count = []
         while True:
             await page.wait_for_timeout(1000 * 5)
+            buttton_next_locator = page.locator(
+                "section.listing-wrapper__pagination "
+                "button[aria-label='Próxima página']"
+            ).first
 
             logger.info("Scrolling down to the end of the page...")
-            await PageHelper.scroll_to_end(page, pixels_to_scroll=100)
 
             result_card_locator = page.locator("a.result-card")
+            async for result_card in PageHelper.scroll_to_end(
+                page,
+                pixels_to_scroll=200,
+                locator=result_card_locator,
+                end=buttton_next_locator,
+            ):
+                result_card: Locator
+                await result_card.scroll_into_view_if_needed()
+                publication = await ResultCardMapper(result_card).get_dict(
+                    PropertyPublication
+                )
+                publications.save(publication)
+
             publication_count.append(await result_card_locator.count())
             logger.info(
                 "%s publication(s) found on page %s",
@@ -259,17 +275,6 @@ class ZapImoveis(Publisher):
                 len(publication_count),
             )
 
-            for result_card in await result_card_locator.all():
-                await result_card.scroll_into_view_if_needed()
-                publication = await ResultCardMapper(result_card).get_dict(
-                    PropertyPublication
-                )
-                publications.save(publication)
-
-            buttton_next_locator = page.locator(
-                "section.listing-wrapper__pagination "
-                "button[aria-label='Próxima página']"
-            ).first
             if await buttton_next_locator.is_visible():
                 logger.info("Going to next page...")
                 await buttton_next_locator.scroll_into_view_if_needed()

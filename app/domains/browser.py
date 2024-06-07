@@ -6,8 +6,9 @@ from playwright.async_api import (
     BrowserContext,
     Page,
     async_playwright,
+    Locator,
 )
-
+from secrets import choice
 from app.settings import Settings
 
 
@@ -15,7 +16,14 @@ from app.settings import Settings
 @asynccontextmanager
 async def launch_browser(settings: Settings) -> Browser:
     async with async_playwright() as playwright:
-        browser = await playwright.firefox.launch(
+        match settings.browser_channel:
+            case "chromium" | "chrome":
+                browser_type = playwright.chromium
+            case "firefox":
+                browser_type = playwright.firefox
+            case _:
+                browser_type = playwright.chromium
+        browser = await browser_type.launch(
             channel=settings.browser_channel,
             headless=settings.browser_headless,
             args=settings.browser_args,
@@ -59,8 +67,14 @@ async def load_page(
 class PageHelper:
 
     @staticmethod
-    async def scroll_to_end(page: Page, pixels_to_scroll: int = 10):
+    async def scroll_to_end(
+        page: Page,
+        pixels_to_scroll: int = 10,
+        locator: Locator = None,
+        end: Locator = None,
+    ) -> Locator:
         page_offsetHeight = None
+        locator_index = 0
         while page_offsetHeight != await page.evaluate(
             "document.body.offsetHeight"
         ):
@@ -74,4 +88,18 @@ class PageHelper:
             remaning_wheel = int(remaning_wheel)
             for _ in range(remaning_wheel):
                 await page.mouse.wheel(0, pixels_to_scroll)
-                await page.wait_for_timeout(int(pixels_to_scroll / 2))
+                await page.wait_for_timeout(
+                    choice(
+                        range(
+                            int(pixels_to_scroll / 2),
+                            int(pixels_to_scroll * 2),
+                        )
+                    )
+                )
+                for index in range(locator_index, await locator.count()):
+                    yield locator.nth(index)
+                    locator_index = locator_index + 1
+                if end and await end.is_visible():
+                    break
+            if end and await end.is_visible():
+                break
