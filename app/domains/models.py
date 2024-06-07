@@ -39,7 +39,8 @@ class PropertyPublication(SQLModel, table=True):
     floor: Optional[int] = None
     balcony: Optional[int] = None
 
-    price: Optional[float] = None
+    buy_price: Optional[float] = None
+    rent_price: Optional[float] = None
     iptu_tax: Optional[float] = None
     condominium_fee: Optional[float] = None
 

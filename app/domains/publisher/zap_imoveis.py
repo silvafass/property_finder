@@ -1,6 +1,6 @@
 from app.domains.publisher import Publisher, Searcher, ModelMapper
 from typing import Self
-from playwright.async_api import Page, Locator
+from playwright.async_api import Page, Locator, TimeoutError
 from app.domains.browser import PageHelper
 from app.domains import publications
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
@@ -220,7 +220,7 @@ class ResultCardMapper(ModelMapper[Locator]):
             else None
         )
 
-    async def price(self) -> float:
+    async def rent_price(self) -> float:
         match = re.search(r"R\$ [0-9.]+", await self._prices())
         return (
             float(match[0].replace("R$ ", "").replace(".", ""))
@@ -230,6 +230,68 @@ class ResultCardMapper(ModelMapper[Locator]):
 
     async def printscreen(self) -> bytes:
         return await self._result_card.screenshot()
+
+
+class PublicationMapper(ModelMapper[Locator]):
+
+    def __init__(self, main_content: Locator) -> None:
+        self._main_content = main_content
+        self._main_content.locator(".description__created-at")
+
+    async def description(self) -> str:
+        return await self._visible(
+            self._main_content.locator(".description__title").first
+        ).text_content()
+
+    async def broker(self) -> str:
+        return await self._visible(
+            self._main_content.locator(
+                ".desktop-only-container .advertiser-info__credentials--name"
+            ).first
+        ).text_content()
+
+    async def buy_price(self) -> float:
+        inner_Locator = self._main_content.locator(".price-both-wrapper")
+        if await inner_Locator.is_hidden():
+            inner_Locator = inner_Locator.or_(
+                self._main_content.locator(".price-value-wrapper")
+            )
+        match = await self._visible(
+            inner_Locator.locator("div", has_text="Venda")
+            .locator(".price-info-value")
+            .first
+        ).text_content()
+        match = re.search(r"[0-9.]+", match)
+        return (
+            float(match[0].replace("R$ ", "").replace(".", ""))
+            if match
+            else None
+        )
+
+    async def rent_price(self) -> float:
+        inner_Locator = self._main_content.locator(".price-both-wrapper")
+        if await inner_Locator.is_hidden():
+            inner_Locator = inner_Locator.or_(
+                self._main_content.locator(".price-value-wrapper")
+            )
+        match = await self._visible(
+            inner_Locator.locator("div", has_text="Aluguel")
+            .locator(".price-info-value")
+            .first
+        ).text_content()
+        match = re.search(r"[0-9.]+", match)
+        return (
+            float(match[0].replace("R$ ", "").replace(".", ""))
+            if match
+            else None
+        )
+
+    async def floor(self) -> int:
+        match = await self._visible(
+            self._main_content.locator("[itemprop=floorLevel]")
+        ).text_content()
+        match = match and re.search(r"[0-9]+", match)
+        return match and int(match[0])
 
 
 class ZapImoveis(Publisher):
@@ -267,6 +329,25 @@ class ZapImoveis(Publisher):
                     PropertyPublication
                 )
                 publications.save(publication)
+
+                try:
+                    async with page.context.expect_page() as new_page_info:
+                        await result_card.click()
+                    async with await new_page_info.value as new_page:
+                        await page.wait_for_timeout(1000 * 1)
+                        main_content = new_page.locator(
+                            ".base-page__main-content"
+                        )
+                        detailed_publication = await PublicationMapper(
+                            main_content
+                        ).get_dict(PropertyPublication)
+                        publication = {
+                            **detailed_publication,
+                            "url": publication["url"],
+                        }
+                        publications.save(publication)
+                except TimeoutError:
+                    raise
 
             publication_count.append(await result_card_locator.count())
             logger.info(

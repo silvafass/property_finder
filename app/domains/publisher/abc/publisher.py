@@ -58,7 +58,7 @@ def visible_check(locator: Locator, function: Callable):
     @wraps(function)
     async def wrapper(*args, **kwargs):
         if await locator.count() <= 1 and await locator.is_hidden():
-            raise HiddenElementError()
+            raise HiddenElementError("Hidden Element")
         return await function(*args, **kwargs)
 
     return wrapper
@@ -84,7 +84,12 @@ class ModelMapper(Generic[T]):
             try:
                 if hasattr(self, key):
                     data[key] = await getattr(self, key)()
-            except (TimeoutError, HiddenElementError, ValueError) as ex:
+            except (
+                TimeoutError,
+                HiddenElementError,
+                ValueError,
+                TypeError,
+            ) as ex:
                 logger.warning(
                     "Failed to get %s information: %s", key, str(ex)
                 )
