@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from playwright.async_api import Page, TimeoutError, Locator
+from playwright.async_api import Page, Locator, TimeoutError
 from app.domains.browser import load_page
 from pydantic import BaseModel
 from typing import Self, TypeVar, Generic, SupportsAbs, Callable
@@ -32,15 +32,30 @@ class Publisher(ABC):
             async with load_page(self.website) as page:
                 page: Page
                 searcherType: type[Searcher]
-                logger.info("Running %s...", searcherType.__name__)
-                await searcherType().search(page)
-                inspecting_start_time = time()
-                logger.info("Inspecting search result: %s", await page.title())
-                await self.inspec(page)
-                logger.info(
-                    "Inspection completed (%s seconds)",
-                    time() - inspecting_start_time,
-                )
+                try:
+                    browser_context = page.context
+                    logger.info("Running %s...", searcherType.__name__)
+                    await searcherType().search(page)
+                    inspecting_start_time = time()
+                    logger.info(
+                        "Inspecting search result: %s", await page.title()
+                    )
+                    await self.inspec(page)
+                    logger.info(
+                        "Inspection completed (%s seconds)",
+                        time() - inspecting_start_time,
+                    )
+                except Exception as ex:
+                    if len(browser_context.pages) > 0:
+                        logger.error(
+                            "Something wrong on open page(s): %s",
+                            (
+                                page.url
+                                for page in browser_context.pages
+                                if not page.is_closed()
+                            ),
+                        )
+                    raise ex
         logger.info(
             "Processing completed (%s seconds)", time() - processing_start_time
         )
@@ -49,6 +64,9 @@ class Publisher(ABC):
     @abstractmethod
     async def inspec(self, page: Page) -> Self:
         pass
+
+    async def playground(self) -> Self:
+        logger.info("Let's play!")
 
 
 T = TypeVar("T", bound=SupportsAbs[Locator])
@@ -85,11 +103,12 @@ class ModelMapper(Generic[T]):
                 if hasattr(self, key):
                     data[key] = await getattr(self, key)()
             except (
-                TimeoutError,
                 HiddenElementError,
                 ValueError,
                 TypeError,
-            ) as ex:
+            ):
+                pass
+            except TimeoutError as ex:
                 logger.warning(
                     "Failed to get %s information: %s", key, str(ex)
                 )

@@ -1,7 +1,7 @@
 from app.domains.publisher import Publisher, Searcher, ModelMapper
 from typing import Self
 from playwright.async_api import Page, Locator, TimeoutError
-from app.domains.browser import PageHelper
+from app.domains.browser import PageHelper, load_page
 from app.domains import publications
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
 import re
@@ -300,7 +300,7 @@ class ZapImoveis(Publisher):
     website: str = "https://www.zapimoveis.com.br/"
     searcherTypes: type[Searcher] = set(
         [
-            BuySearcher,
+            # BuySearcher,
             RentSearcher,
         ]
     )
@@ -324,12 +324,16 @@ class ZapImoveis(Publisher):
                 end=buttton_next_locator,
             ):
                 result_card: Locator
+                if await result_card.is_visible():
+                    logger.info(
+                        "Getting info from URL: %s",
+                        await result_card.get_attribute("href"),
+                    )
                 await result_card.scroll_into_view_if_needed()
                 publication = await ResultCardMapper(result_card).get_dict(
                     PropertyPublication
                 )
-                publications.save(publication)
-
+                publications.save({**publication, "search_url": page.url})
                 try:
                     async with page.context.expect_page() as new_page_info:
                         await result_card.click()
@@ -341,11 +345,11 @@ class ZapImoveis(Publisher):
                         detailed_publication = await PublicationMapper(
                             main_content
                         ).get_dict(PropertyPublication)
-                        publication = {
-                            **detailed_publication,
+                        detailed_publication = {
                             "url": publication["url"],
+                            **detailed_publication,
                         }
-                        publications.save(publication)
+                        publications.save(detailed_publication)
                 except TimeoutError:
                     raise
 
@@ -363,3 +367,15 @@ class ZapImoveis(Publisher):
             else:
                 break
         logger.info("Total of %s publication(s) found", sum(publication_count))
+
+    async def playground(self) -> Self:
+        async with load_page(
+            "https://www.zapimoveis.com.br/imovel/venda-apartamento-"
+            "3-quartos-com-cozinha-campo-grande-santos-96m2-id-2625423792/"
+        ) as page:
+            await page.wait_for_timeout(1000 * 1)
+            main_content = page.locator(".base-page__main-content")
+            publication = await PublicationMapper(main_content).get_dict(
+                PropertyPublication
+            )
+            logger.info("publication: %s", publication)
