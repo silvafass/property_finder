@@ -22,7 +22,8 @@ class PropertyType(StrEnum):
 class PropertyPublication(SQLModel, table=True):
     url: str = Field(primary_key=True)
     search_url: Optional[str] = None
-    published_at: Optional[datetime] = None
+    publication_created_at: Optional[datetime] = None
+    publication_updated_at: Optional[datetime] = None
     description: Optional[str] = None
     details: Optional[str] = None
     printscreen: Optional[bytes] = None

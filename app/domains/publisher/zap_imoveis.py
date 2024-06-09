@@ -8,6 +8,8 @@ import re
 from enum import auto
 import logging
 from app.settings import PublisherSearchSettings
+import rich
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,10 @@ class BuySearcher(BaseSearcher):
 
         await super().search(page)
 
+        await page.wait_for_timeout(200)
+        if await page.locator("div[aria-label='Fechar']").is_visible():
+            await page.locator("div[aria-label='Fechar']").click()
+
         await page.get_by_role("button", name="Ordenar por").click()
         await page.get_by_text("Mais recente").click()
 
@@ -89,6 +95,10 @@ class RentSearcher(BaseSearcher):
         await page.get_by_role("tab", name="Alugar").click()
 
         await super().search(page)
+
+        await page.wait_for_timeout(200)
+        if await page.locator("div[aria-label='Fechar']").is_visible():
+            await page.locator("div[aria-label='Fechar']").click()
 
         await page.get_by_role("button", name="Ordenar por").click()
         await page.get_by_text("Mais recente").click()
@@ -236,7 +246,14 @@ class PublicationMapper(ModelMapper[Locator]):
 
     def __init__(self, main_content: Locator) -> None:
         self._main_content = main_content
-        self._main_content.locator(".description__created-at")
+
+    async def _before(self):
+        await self._main_content.locator(
+            ".description__created-at"
+        ).first.text_content()
+        await self._visible(
+            self._main_content.get_by_text("Todas as características")
+        ).click()
 
     async def description(self) -> str:
         return await self._visible(
@@ -293,6 +310,33 @@ class PublicationMapper(ModelMapper[Locator]):
         match = match and re.search(r"[0-9]+", match)
         return match and int(match[0])
 
+    async def balcony(self) -> int:
+        has_balcony = await self._visible(
+            self._main_content.locator("[itemprop=balcony]")
+        ).is_visible()
+        return 1 if has_balcony else 0
+
+    async def address(self) -> str:
+        return await self._visible(
+            self._main_content.locator(".address-info-value")
+        ).text_content()
+
+    async def publication_created_at(self) -> datetime:
+        html_content = await self._main_content.page.content()
+        match = re.search(
+            r"createdAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", html_content
+        )
+        match = match and re.search(r"\d+-\d+-\d+T\d+:\d+:\d+", match[0])
+        return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+
+    async def publication_updated_at(self) -> datetime:
+        html_content = await self._main_content.page.content()
+        match = re.search(
+            r"updatedAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", html_content
+        )
+        match = match and re.search(r"\d+-\d+-\d+T\d+:\d+:\d+", match[0])
+        return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+
 
 class ZapImoveis(Publisher):
 
@@ -300,7 +344,7 @@ class ZapImoveis(Publisher):
     website: str = "https://www.zapimoveis.com.br/"
     searcherTypes: type[Searcher] = set(
         [
-            # BuySearcher,
+            BuySearcher,
             RentSearcher,
         ]
     )
@@ -338,7 +382,6 @@ class ZapImoveis(Publisher):
                     async with page.context.expect_page() as new_page_info:
                         await result_card.click()
                     async with await new_page_info.value as new_page:
-                        await page.wait_for_timeout(1000 * 1)
                         main_content = new_page.locator(
                             ".base-page__main-content"
                         )
@@ -370,12 +413,15 @@ class ZapImoveis(Publisher):
 
     async def playground(self) -> Self:
         async with load_page(
-            "https://www.zapimoveis.com.br/imovel/venda-apartamento-"
-            "3-quartos-com-cozinha-campo-grande-santos-96m2-id-2625423792/"
+            "https://www.zapimoveis.com.br/imovel/aluguel-apartamento-"
+            "2-quartos-com-ar-condicionado-centro-sao-vicente-sp-52m2-"
+            "id-2713416522/"
         ) as page:
+            page: Page
             await page.wait_for_timeout(1000 * 1)
             main_content = page.locator(".base-page__main-content")
             publication = await PublicationMapper(main_content).get_dict(
                 PropertyPublication
             )
-            logger.info("publication: %s", publication)
+            rich.print_json(data=publication, default=str)
+            # await page.wait_for_timeout(60*1000)

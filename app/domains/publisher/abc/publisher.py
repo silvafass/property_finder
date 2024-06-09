@@ -96,19 +96,25 @@ class ModelMapper(Generic[T]):
                 )
         return locator
 
+    async def _before(self):
+        pass
+
     async def get_dict(self, model_constructor: type[BaseModel]) -> dict:
         data: dict = {}
+        await self._before()
         for key in model_constructor.model_fields.keys():
             try:
                 if hasattr(self, key):
                     data[key] = await getattr(self, key)()
             except (
                 HiddenElementError,
-                ValueError,
                 TypeError,
             ):
                 pass
-            except TimeoutError as ex:
+            except (
+                TimeoutError,
+                ValueError,
+            ) as ex:
                 logger.warning(
                     "Failed to get %s information: %s", key, str(ex)
                 )

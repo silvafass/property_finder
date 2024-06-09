@@ -12,7 +12,7 @@ from rich.console import Console
 app = typer.Typer(no_args_is_help=True, rich_markup_mode="markdown")
 
 console = Console()
-console.set_alt_screen(True)
+console.set_alt_screen(False)
 logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
