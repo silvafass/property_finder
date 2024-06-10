@@ -19,7 +19,7 @@ class SearchSettings(BaseSettings):
     bedrooms: List[int] = []
 
 
-class PublisherSearchSettings(BaseSettings):
+class PublisherSettings(BaseSettings):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,6 +40,7 @@ class PublisherSearchSettings(BaseSettings):
             if _renting_search.get(key) is None:
                 setattr(self.renting_search, key, value)
 
+    only_inspect: bool = True
     base_search: SearchSettings = SearchSettings()
     buying_search: SearchSettings = SearchSettings()
     renting_search: SearchSettings = SearchSettings()
@@ -65,5 +66,7 @@ class Settings(BaseSettings):
     browser_args: List[str] = []
     # browser_no_viewport: bool = True
     browser_no_viewport: bool = False
+
+    default_publisher_settings: PublisherSettings = PublisherSettings()
 
     model_config = SettingsConfigDict(env_file=".env")

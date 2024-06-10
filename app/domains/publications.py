@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Tuple
 from kink import inject
-from sqlmodel import Session, select
-from datetime import UTC, datetime
+from sqlmodel import Session, select, desc, func, or_, col
+from datetime import UTC, datetime, timedelta
 from app.domains.models import PropertyPublication
 
 
@@ -19,6 +19,48 @@ def save(data: dict, session: Session):
             session.add(model)
         else:
             session.add(PropertyPublication(**data))
+
+
+@inject
+def urls_by_publisher(
+    publisher: str,
+    slice: tuple = None,
+    look_back: timedelta = timedelta(hours=1),
+    only_inspect: bool = False,
+    session: Session = None,
+) -> Tuple[int, List[str]]:
+    with session:
+        conditionals = [
+            PropertyPublication.publisher == publisher,
+            (
+                or_(
+                    PropertyPublication.updated_at
+                    > datetime.now(UTC) - look_back,
+                    col(PropertyPublication.broker).is_(None),
+                )
+                if look_back
+                else True
+            ),
+            (
+                col(PropertyPublication.to_inspect).is_(True)
+                if only_inspect
+                else True
+            ),
+            col(PropertyPublication.deleted).is_not(True),
+        ]
+        statement_count = select(func.count(PropertyPublication.url)).where(
+            *conditionals
+        )
+        statement_url = (
+            select(PropertyPublication.url)
+            .where(*conditionals)
+            .order_by(desc(PropertyPublication.created_at))
+        )
+        if slice:
+            statement_url = statement_url.slice(*slice)
+        return session.exec(statement_count).one(), list(
+            session.exec(statement_url).all()
+        )
 
 
 @inject

@@ -4,7 +4,7 @@ from app.domains.browser import load_page
 from pydantic import BaseModel
 from typing import Self, TypeVar, Generic, SupportsAbs, Callable
 import logging
-from time import time
+from datetime import datetime, UTC
 from app.exceptions import HiddenElementError
 import inspect
 from functools import wraps
@@ -25,8 +25,8 @@ class Publisher(ABC):
     website: str
     searcherTypes: type[Searcher] = set()
 
-    async def process(self) -> Self:
-        processing_start_time = time()
+    async def _search_process(self) -> Self:
+        search_process_start_time = datetime.now(UTC)
         logger.info("Processing search on %s (%s)", self.name, self.website)
         for searcherType in self.searcherTypes:
             async with load_page(self.website) as page:
@@ -36,33 +36,85 @@ class Publisher(ABC):
                     browser_context = page.context
                     logger.info("Running %s...", searcherType.__name__)
                     await searcherType().search(page)
-                    inspecting_start_time = time()
+                    inspecting_start_time = datetime.now(UTC)
                     logger.info(
-                        "Inspecting search result: %s", await page.title()
+                        "Processing search result: %s", await page.title()
                     )
-                    await self.inspec(page)
+                    await self.inspect_search_results_page(page)
                     logger.info(
-                        "Inspection completed (%s seconds)",
-                        time() - inspecting_start_time,
+                        "Inspect search results completed (elapsed time %s)",
+                        datetime.now(UTC) - inspecting_start_time,
                     )
                 except Exception as ex:
                     if len(browser_context.pages) > 0:
                         logger.error(
                             "Something wrong on open page(s): %s",
-                            (
-                                page.url
+                            [
+                                page
                                 for page in browser_context.pages
                                 if not page.is_closed()
-                            ),
+                            ],
                         )
                     raise ex
         logger.info(
-            "Processing completed (%s seconds)", time() - processing_start_time
+            "Search process completed (elapsed time %s)",
+            datetime.now(UTC) - search_process_start_time,
+        )
+
+    async def _publications_processs(self) -> Self:
+        publications_process_start_time = datetime.now(UTC)
+        async for publication_url in self.query_publication_urls():
+            if publication_url is None:
+                continue
+            try:
+                async with load_page(publication_url) as page:
+                    page: Page
+                    try:
+                        browser_context = page.context
+                        logger.info(
+                            "Processing publications page: %s", publication_url
+                        )
+                        await self.inspect_publication_page(
+                            page, publication_url
+                        )
+                    except Exception as ex:
+                        if len(browser_context.pages) > 0:
+                            logger.error(
+                                "Something wrong on open page(s): %s",
+                                [
+                                    page
+                                    for page in browser_context.pages
+                                    if not page.is_closed()
+                                ],
+                            )
+                        raise ex
+            except TimeoutError as ex:
+                logger.warning(str(ex))
+        logger.info(
+            "Publications process completed (elapsed time %s)",
+            datetime.now(UTC) - publications_process_start_time,
+        )
+
+    async def process(self) -> Self:
+        processing_start_time = datetime.now(UTC)
+        await self._search_process()
+        await self._publications_processs()
+        logger.info(
+            "All processes completed (elapsed time %s)",
+            datetime.now(UTC) - processing_start_time,
         )
         return self
 
     @abstractmethod
-    async def inspec(self, page: Page) -> Self:
+    async def inspect_search_results_page(self, page: Page) -> Self:
+        pass
+
+    async def query_publication_urls(self) -> str:
+        yield None
+
+    async def inspect_publication_page(
+        self, page: Page, publication_url: str
+    ) -> Self:
         pass
 
     async def playground(self) -> Self:
@@ -101,7 +153,12 @@ class ModelMapper(Generic[T]):
 
     async def get_dict(self, model_constructor: type[BaseModel]) -> dict:
         data: dict = {}
-        await self._before()
+
+        try:
+            await self._before()
+        except (HiddenElementError, TypeError, TimeoutError, ValueError):
+            pass
+
         for key in model_constructor.model_fields.keys():
             try:
                 if hasattr(self, key):

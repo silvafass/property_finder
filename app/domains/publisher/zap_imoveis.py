@@ -1,15 +1,16 @@
 from app.domains.publisher import Publisher, Searcher, ModelMapper
 from typing import Self
-from playwright.async_api import Page, Locator, TimeoutError
-from app.domains.browser import PageHelper, load_page
+from playwright.async_api import Page, Locator
+from app.domains.browser import PageHelper
 from app.domains import publications
 from app.domains.models import PropertyPublication, PropertyType, ProposalType
 import re
 from enum import auto
 import logging
-from app.settings import PublisherSearchSettings
+from app.settings import Settings
 import rich
 from datetime import datetime
+from kink import inject
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +29,14 @@ proposal_type_mapper = dict(
 )
 
 
+@inject
 class BaseSearcher(Searcher):
 
-    publisherSearchSettings: PublisherSearchSettings = (
-        PublisherSearchSettings()
-    )
+    def __init__(self, settings: Settings) -> None:
+        self.publisher_settings = settings.default_publisher_settings
 
     async def search(self, page: Page):
-        base_search = self.publisherSearchSettings.base_search
+        base_search = self.publisher_settings.base_search
         await page.get_by_text("Entendi").click()
         for location in base_search.locations:
             await page.get_by_label("Onde deseja morar?").fill(location)
@@ -50,7 +51,7 @@ class BaseSearcher(Searcher):
 class BuySearcher(BaseSearcher):
 
     async def search(self, page: Page):
-        buying_search = self.publisherSearchSettings.buying_search
+        buying_search = self.publisher_settings.buying_search
         await page.get_by_role("tab", name="Comprar").click()
 
         await super().search(page)
@@ -91,7 +92,7 @@ class BuySearcher(BaseSearcher):
 class RentSearcher(BaseSearcher):
 
     async def search(self, page: Page):
-        renting_search = self.publisherSearchSettings.renting_search
+        renting_search = self.publisher_settings.renting_search
         await page.get_by_role("tab", name="Alugar").click()
 
         await super().search(page)
@@ -230,7 +231,19 @@ class ResultCardMapper(ModelMapper[Locator]):
             else None
         )
 
+    async def buy_price(self) -> float:
+        if await self.proposal() != ProposalType.SELL:
+            return None
+        match = re.search(r"R\$ [0-9.]+", await self._prices())
+        return (
+            float(match[0].replace("R$ ", "").replace(".", ""))
+            if match
+            else None
+        )
+
     async def rent_price(self) -> float:
+        if await self.proposal() != ProposalType.RENT:
+            return None
         match = re.search(r"R\$ [0-9.]+", await self._prices())
         return (
             float(match[0].replace("R$ ", "").replace(".", ""))
@@ -322,22 +335,35 @@ class PublicationMapper(ModelMapper[Locator]):
         ).text_content()
 
     async def publication_created_at(self) -> datetime:
-        html_content = await self._main_content.page.content()
-        match = re.search(
-            r"createdAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", html_content
-        )
-        match = match and re.search(r"\d+-\d+-\d+T\d+:\d+:\d+", match[0])
-        return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+        script_locator = self._main_content.page.locator("script")
+        for index in range(await script_locator.count()):
+            text_content = await script_locator.nth(index).text_content()
+            match = re.search(
+                r"createdAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", text_content
+            )
+            if match:
+                match = match and re.search(
+                    r"\d+-\d+-\d+T\d+:\d+:\d+", match[0]
+                )
+                return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+        return None
 
     async def publication_updated_at(self) -> datetime:
-        html_content = await self._main_content.page.content()
-        match = re.search(
-            r"updatedAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", html_content
-        )
-        match = match and re.search(r"\d+-\d+-\d+T\d+:\d+:\d+", match[0])
-        return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+        script_locator = self._main_content.page.locator("script")
+        for index in range(await script_locator.count()):
+            text_content = await script_locator.nth(index).text_content()
+            match = re.search(
+                r"updatedAt.+:.+\d+-\d+-\d+T\d+:\d+:\d+", text_content
+            )
+            if match:
+                match = match and re.search(
+                    r"\d+-\d+-\d+T\d+:\d+:\d+", match[0]
+                )
+                return datetime.strptime(match[0], "%Y-%m-%dT%H:%M:%S")
+        return None
 
 
+@inject
 class ZapImoveis(Publisher):
 
     name: str = "Zap Imoveis"
@@ -349,7 +375,10 @@ class ZapImoveis(Publisher):
         ]
     )
 
-    async def inspec(self, page: Page) -> Self:
+    def __init__(self, settings: Settings) -> None:
+        self.publisher_settings = settings.default_publisher_settings
+
+    async def inspect_search_results_page(self, page: Page) -> Self:
         publication_count = []
         while True:
             await page.wait_for_timeout(1000 * 5)
@@ -377,24 +406,9 @@ class ZapImoveis(Publisher):
                 publication = await ResultCardMapper(result_card).get_dict(
                     PropertyPublication
                 )
-                publications.save({**publication, "search_url": page.url})
-                try:
-                    async with page.context.expect_page() as new_page_info:
-                        await result_card.click()
-                    async with await new_page_info.value as new_page:
-                        main_content = new_page.locator(
-                            ".base-page__main-content"
-                        )
-                        detailed_publication = await PublicationMapper(
-                            main_content
-                        ).get_dict(PropertyPublication)
-                        detailed_publication = {
-                            "url": publication["url"],
-                            **detailed_publication,
-                        }
-                        publications.save(detailed_publication)
-                except TimeoutError:
-                    raise
+                publications.save(
+                    {**publication, "search_url": page.url, "to_inspect": True}
+                )
 
             publication_count.append(await result_card_locator.count())
             logger.info(
@@ -411,17 +425,62 @@ class ZapImoveis(Publisher):
                 break
         logger.info("Total of %s publication(s) found", sum(publication_count))
 
-    async def playground(self) -> Self:
-        async with load_page(
-            "https://www.zapimoveis.com.br/imovel/aluguel-apartamento-"
-            "2-quartos-com-ar-condicionado-centro-sao-vicente-sp-52m2-"
-            "id-2713416522/"
-        ) as page:
-            page: Page
-            await page.wait_for_timeout(1000 * 1)
-            main_content = page.locator(".base-page__main-content")
-            publication = await PublicationMapper(main_content).get_dict(
-                PropertyPublication
+    async def query_publication_urls(self) -> str:
+        start, stop = 0, 10
+        stop_step = stop
+        count, urls = publications.urls_by_publisher(
+            self.name,
+            slice=(start, stop),
+            only_inspect=self.publisher_settings.only_inspect,
+        )
+        while urls:
+            previous_count = count
+            logger.info(
+                "Processing %s of %s total publication URLs...",
+                len(urls),
+                count,
             )
-            rich.print_json(data=publication, default=str)
-            # await page.wait_for_timeout(60*1000)
+            for url in urls:
+                yield url
+            if (
+                count == previous_count
+                and not self.publisher_settings.only_inspect
+            ):
+                start = stop
+                stop = stop + stop_step
+            count, urls = publications.urls_by_publisher(
+                self.name,
+                slice=(start, stop),
+                only_inspect=self.publisher_settings.only_inspect,
+            )
+
+    async def inspect_publication_page(
+        self, page: Page, publication_url: str
+    ) -> Self:
+        if "/404/?" in page.url:
+            publications.save(
+                {"url": publication_url, "to_inspect": False, "deleted": True}
+            )
+            return
+
+        await page.wait_for_timeout(1000 * 1)
+        main_content = page.locator(".base-page__main-content")
+        detailed_publication = await PublicationMapper(main_content).get_dict(
+            PropertyPublication
+        )
+        detailed_publication = {
+            "url": publication_url,
+            "to_inspect": False,
+            **detailed_publication,
+        }
+        publications.save(detailed_publication)
+
+    async def playground(self) -> Self:
+        publisher = ZapImoveis()
+        async for url in publisher.query_publication_urls():
+            rich.print("URL", url)
+            detailed_publication = {
+                "url": url,
+                "to_inspect": False,
+            }
+            publications.save(detailed_publication)

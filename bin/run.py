@@ -7,21 +7,28 @@ from kink import inject
 import logging
 import typer
 from rich.logging import RichHandler
-from rich.console import Console
+import rich
+from app.settings import Settings
 
 app = typer.Typer(no_args_is_help=True, rich_markup_mode="markdown")
 
-console = Console()
-console.set_alt_screen(False)
+rich.get_console().set_alt_screen(False)
+rich.get_console().clear()
 logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
     format="%(message)s",
-    handlers=[RichHandler(console=console)],
+    handlers=[
+        RichHandler(
+            tracebacks_show_locals=True,
+            rich_tracebacks=True,
+            tracebacks_word_wrap=True,
+        )
+    ],
 )
 
 
-@inject()
+@inject
 def get_publishers(
     like: str = None, publishers: List[Publisher] = []
 ) -> List[Publisher]:
@@ -43,9 +50,9 @@ def get_publishers(
 
 
 @app.command()
-def finder(like: str = None):
+def all_process(like: str = None):
     """
-    Run Finder for properties publishers.
+    Perform all detailed search processing on the publishers website.
 
     * Pass `--like patter_name` if you want to filter publishers
     """
@@ -58,9 +65,39 @@ def finder(like: str = None):
 
 
 @app.command()
+def search_process(like: str = None):
+    """
+    Perform search processing on the publishers website.
+
+    * Pass `--like patter_name` if you want to filter publishers
+    """
+
+    async def inner():
+        for publisher in get_publishers(like):
+            await publisher._search_process()
+
+    asyncio.run(inner())
+
+
+@app.command()
+def detailed_info_process(like: str = None):
+    """
+    Perform publication info processing on the publishers website.
+
+    * Pass `--like patter_name` if you want to filter publishers
+    """
+
+    async def inner():
+        for publisher in get_publishers(like):
+            await publisher._publications_processs()
+
+    asyncio.run(inner())
+
+
+@app.command()
 def playground(like: str = None):
     """
-    Run playground for publishers.
+    Peform playground in publishers.
 
     * Pass `--like patter_name` if you want to filter publishers
     """
@@ -73,10 +110,19 @@ def playground(like: str = None):
 
 
 @app.callback()
-def callback():
+def callback(log: bool = True, only_inspect: bool = True):
     """
     Property Finder o/
     """
+    if not log:
+        logging.disable(logging.CRITICAL)
+
+    @inject
+    def inner(settings: Settings):
+        if not only_inspect:
+            settings.default_publisher_settings.only_inspect = only_inspect
+
+    inner()
 
 
 if __name__ == "__main__":
