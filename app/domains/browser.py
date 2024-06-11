@@ -67,8 +67,8 @@ async def load_page(
 class PageHelper:
 
     @staticmethod
-    def _random_timeout(timeout: float):
-        return choice(range(int(timeout / 2), int(timeout * 2)))
+    def _random_variation(num: float, rate: float = 0.5) -> int:
+        return choice(range(int(num * (1 - rate)), int(num * (1 + rate))))
 
     @staticmethod
     async def scroll_to_end(
@@ -89,9 +89,11 @@ class PageHelper:
             remaning_offsetHeight = page_offsetHeight - previous_offsetHeight
             remaning_wheel = remaning_offsetHeight / pixels_to_scroll
             for _ in range(int(remaning_wheel)):
-                await page.mouse.wheel(0, pixels_to_scroll)
+                await page.mouse.wheel(
+                    0, PageHelper._random_variation(pixels_to_scroll, rate=0.1)
+                )
                 await page.wait_for_timeout(
-                    PageHelper._random_timeout(pixels_to_scroll)
+                    PageHelper._random_variation(pixels_to_scroll)
                 )
                 if locator_index < await locator.count():
                     yield locator.nth(locator_index)
@@ -102,7 +104,7 @@ class PageHelper:
                 yield locator.nth(index)
                 locator_index = locator_index + 1
             await page.wait_for_timeout(
-                PageHelper._random_timeout(pixels_to_scroll)
+                PageHelper._random_variation(pixels_to_scroll)
             )
             if end and await end.is_visible():
                 break
