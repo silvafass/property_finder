@@ -67,6 +67,10 @@ async def load_page(
 class PageHelper:
 
     @staticmethod
+    def _random_timeout(timeout: float):
+        return choice(range(int(timeout / 2), int(timeout * 2)))
+
+    @staticmethod
     async def scroll_to_end(
         page: Page,
         pixels_to_scroll: int = 10,
@@ -78,28 +82,27 @@ class PageHelper:
         while page_offsetHeight != await page.evaluate(
             "document.body.offsetHeight"
         ):
-            previous_page_offsetHeight = page_offsetHeight or 0
+            previous_offsetHeight = page_offsetHeight or 0
             page_offsetHeight = await page.evaluate(
                 "document.body.offsetHeight"
             )
-            remaning_wheel = (
-                page_offsetHeight - previous_page_offsetHeight
-            ) / pixels_to_scroll
-            remaning_wheel = int(remaning_wheel)
-            for _ in range(remaning_wheel):
+            remaning_offsetHeight = page_offsetHeight - previous_offsetHeight
+            remaning_wheel = remaning_offsetHeight / pixels_to_scroll
+            for _ in range(int(remaning_wheel)):
                 await page.mouse.wheel(0, pixels_to_scroll)
                 await page.wait_for_timeout(
-                    choice(
-                        range(
-                            int(pixels_to_scroll / 2),
-                            int(pixels_to_scroll * 2),
-                        )
-                    )
+                    PageHelper._random_timeout(pixels_to_scroll)
                 )
-                for index in range(locator_index, await locator.count()):
-                    yield locator.nth(index)
+                if locator_index < await locator.count():
+                    yield locator.nth(locator_index)
                     locator_index = locator_index + 1
                 if end and await end.is_visible():
                     break
+            for index in range(locator_index, await locator.count()):
+                yield locator.nth(index)
+                locator_index = locator_index + 1
+            await page.wait_for_timeout(
+                PageHelper._random_timeout(pixels_to_scroll)
+            )
             if end and await end.is_visible():
                 break

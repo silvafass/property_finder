@@ -10,7 +10,11 @@ from rich.logging import RichHandler
 import rich
 from app.settings import Settings
 
-app = typer.Typer(no_args_is_help=True, rich_markup_mode="markdown")
+app = typer.Typer(
+    no_args_is_help=True,
+    rich_markup_mode="markdown",
+    pretty_exceptions_enable=False,
+)
 
 rich.get_console().set_alt_screen(False)
 rich.get_console().clear()
