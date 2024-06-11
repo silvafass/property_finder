@@ -27,6 +27,7 @@ class PropertyPublication(SQLModel, table=True):
     description: Optional[str] = None
     details: Optional[str] = None
     printscreen: Optional[bytes] = None
+    picture: Optional[bytes] = None
     address: Optional[str] = None
     broker: Optional[str] = None
     publisher: Optional[str] = None

@@ -27,6 +27,7 @@ logging.basicConfig(
             tracebacks_show_locals=True,
             rich_tracebacks=True,
             tracebacks_word_wrap=True,
+            tracebacks_suppress=["logging"],
         )
     ],
 )

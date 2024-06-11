@@ -41,6 +41,7 @@ class PublisherSettings(BaseSettings):
                 setattr(self.renting_search, key, value)
 
     only_inspect: bool = True
+    download_picture: bool = True
     base_search: SearchSettings = SearchSettings()
     buying_search: SearchSettings = SearchSettings()
     renting_search: SearchSettings = SearchSettings()

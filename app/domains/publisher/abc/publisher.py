@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, UTC
 from app.exceptions import HiddenElementError
 import inspect
-from functools import wraps
+from functools import wraps, partial
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,12 @@ class Publisher(ABC):
         search_process_start_time = datetime.now(UTC)
         logger.info("Processing search on %s (%s)", self.name, self.website)
         for searcherType in self.searcherTypes:
-            async with load_page(self.website) as page:
+            async with load_page(
+                self.website,
+                setup=partial(
+                    self.setup_page, self.inspect_search_results_page.__name__
+                ),
+            ) as page:
                 page: Page
                 searcherType: type[Searcher]
                 try:
@@ -67,7 +72,12 @@ class Publisher(ABC):
             if publication_url is None:
                 continue
             try:
-                async with load_page(publication_url) as page:
+                async with load_page(
+                    publication_url,
+                    setup=partial(
+                        self.setup_page, self.inspect_publication_page.__name__
+                    ),
+                ) as page:
                     page: Page
                     try:
                         browser_context = page.context
@@ -104,6 +114,9 @@ class Publisher(ABC):
             datetime.now(UTC) - processing_start_time,
         )
         return self
+
+    async def setup_page(self, load_type: str, page: Page, url: str):
+        pass
 
     @abstractmethod
     async def inspect_search_results_page(self, page: Page) -> Self:
