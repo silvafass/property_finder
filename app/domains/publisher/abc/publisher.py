@@ -68,6 +68,7 @@ class Publisher(ABC):
 
     async def _publications_processs(self) -> Self:
         publications_process_start_time = datetime.now(UTC)
+        urls_count = 0
         async for publication_url in self.query_publication_urls():
             if publication_url is None:
                 continue
@@ -80,9 +81,12 @@ class Publisher(ABC):
                 ) as page:
                     page: Page
                     try:
+                        urls_count = urls_count + 1
                         browser_context = page.context
                         logger.info(
-                            "Processing publications page: %s", publication_url
+                            "Processing publications page %s: %s",
+                            urls_count,
+                            publication_url,
                         )
                         await self.inspect_publication_page(
                             page, publication_url

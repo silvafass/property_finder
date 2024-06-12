@@ -407,7 +407,12 @@ class ZapImoveis(Publisher):
                     PropertyPublication
                 )
                 publications.save(
-                    {**publication, "search_url": page.url, "to_inspect": True}
+                    {
+                        **publication,
+                        "search_url": page.url,
+                        "to_inspect": True,
+                        "deleted": False,
+                    }
                 )
 
             publication_count.append(await result_card_locator.count())
@@ -501,6 +506,7 @@ class ZapImoveis(Publisher):
         detailed_publication = {
             "url": publication_url,
             "to_inspect": False,
+            "deleted": False,
             **detailed_publication,
         }
         publications.save(detailed_publication)

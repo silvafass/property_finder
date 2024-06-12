@@ -38,7 +38,7 @@ def urls_by_publisher(
                     > datetime.now(UTC) - look_back,
                     col(PropertyPublication.broker).is_(None),
                 )
-                if look_back
+                if look_back and only_inspect
                 else True
             ),
             (
