@@ -25,7 +25,7 @@ def save(data: dict, session: Session):
 def urls_by_publisher(
     publisher: str,
     slice: tuple = None,
-    look_back: timedelta = timedelta(hours=1),
+    look_back: timedelta = timedelta(hours=2),
     only_inspect: bool = False,
     session: Session = None,
 ) -> Tuple[int, List[str]]:
@@ -64,7 +64,13 @@ def urls_by_publisher(
 
 
 @inject
-def get_all(session: Session) -> List[PropertyPublication]:
+def already_have_photo(
+    url: str,
+    session: Session,
+) -> bool:
     with session:
-        statement = select(PropertyPublication)
-        return list(session.exec(statement).all())
+        return session.exec(
+            select(col(PropertyPublication.url).is_not(None)).where(
+                PropertyPublication.url == url
+            )
+        ).first()

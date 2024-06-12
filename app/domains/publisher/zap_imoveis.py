@@ -10,8 +10,7 @@ import logging
 from app.settings import Settings
 from datetime import datetime
 from kink import inject
-import cv2
-import numpy as np
+from app.utils import vertically_concat_images
 
 logger = logging.getLogger(__name__)
 
@@ -457,36 +456,10 @@ class ZapImoveis(Publisher):
 
     async def setup_page(self, load_type: str, page: Page, url: str):
         if (
-            not self.publisher_settings.download_picture
-            and load_type != self.inspect_publication_page.__name__
-        ):
+            self.publisher_settings.always_download_pictures
+            or not publications.already_have_photo(url)
+        ) and load_type != self.inspect_publication_page.__name__:
             return
-
-        def vconcat_resize(
-            images: List[bytes], interpolation: int = cv2.INTER_CUBIC
-        ) -> bytes:
-            images = [np.fromstring(image, np.uint8) for image in images]
-            images: List[cv2.typing.MatLike] = [
-                cv2.imdecode(image, cv2.IMREAD_COLOR) for image in images
-            ]
-
-            minimum_width = min(image.shape[1] for image in images)
-            resized_images = [
-                cv2.resize(
-                    image,
-                    (
-                        minimum_width,
-                        int(image.shape[0] * minimum_width / image.shape[1]),
-                    ),
-                    interpolation=interpolation,
-                )
-                for image in images
-            ]
-            concat_image = cv2.vconcat(resized_images)
-            _, concat_image_in_bytes = cv2.imencode(
-                ".jpg", concat_image, [cv2.IMWRITE_JPEG_QUALITY, 50]
-            )
-            return concat_image_in_bytes.tobytes()
 
         images: List[bytes] = []
 
@@ -502,13 +475,13 @@ class ZapImoveis(Publisher):
             except Error as ex:
                 logger.warning("Failed to getting image: %s", str(ex))
 
-        page.on("response", response_handler)
-
         async def close_handler(_):
+            page.remove_listener("response", response_handler)
             images and publications.save(
-                {"url": url, "picture": vconcat_resize(images)}
+                {"url": url, "picture": vertically_concat_images(images)}
             )
 
+        page.on("response", response_handler)
         page.once("close", close_handler)
 
     async def inspect_publication_page(
@@ -520,7 +493,7 @@ class ZapImoveis(Publisher):
             )
             return
 
-        await page.wait_for_timeout(PageHelper.random_variation(1000))
+        await PageHelper.wait_for_timeout(page, 1000)
         main_content = page.locator(".base-page__main-content")
         detailed_publication = await PublicationMapper(main_content).get_dict(
             PropertyPublication
@@ -533,15 +506,15 @@ class ZapImoveis(Publisher):
         publications.save(detailed_publication)
 
         if (
-            self.publisher_settings.download_picture
-            and await page.locator(".carousel-photos--wrapper").is_visible()
-        ):
+            self.publisher_settings.always_download_pictures
+            or not publications.already_have_photo(publication_url)
+        ) and await page.locator(".carousel-photos--wrapper").is_visible():
             await page.locator(".carousel-photos--wrapper").click()
-            await page.wait_for_timeout(PageHelper.random_variation(200))
+            await PageHelper.wait_for_timeout(page, 200)
             await page.locator(
                 ".image-container .image-container__item"
             ).first.click()
-            await page.wait_for_timeout(PageHelper.random_variation(1000))
+            await PageHelper.wait_for_timeout(page, 2 * 1000)
 
     async def playground(self) -> Self:
         pass
