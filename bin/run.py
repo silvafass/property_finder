@@ -59,7 +59,7 @@ def all_process(like: str = None):
     """
     Perform all detailed search processing on the publishers website.
 
-    * Pass `--like patter_name` if you want to filter publishers
+    * Pass `--like patter_name` to filter publishers
     """
 
     async def inner():
@@ -74,7 +74,7 @@ def search_process(like: str = None):
     """
     Perform search processing on the publishers website.
 
-    * Pass `--like patter_name` if you want to filter publishers
+    * Pass `--like patter_name` to filter publishers
     """
 
     async def inner():
@@ -89,7 +89,7 @@ def detailed_info_process(like: str = None):
     """
     Perform publication info processing on the publishers website.
 
-    * Pass `--like patter_name` if you want to filter publishers
+    * Pass `--like patter_name` to filter publishers
     """
 
     async def inner():
@@ -104,7 +104,7 @@ def playground(like: str = None):
     """
     Peform playground in publishers.
 
-    * Pass `--like patter_name` if you want to filter publishers
+    * Pass `--like patter_name` to filter publishers
     """
 
     async def inner():
@@ -115,9 +115,21 @@ def playground(like: str = None):
 
 
 @app.callback()
-def callback(log: bool = True, only_inspect: bool = True):
+def callback(
+    log: bool = True,
+    only_inspect: bool = True,
+    always_download_pictures: bool = False,
+):
     """
-    Property Finder o/
+    Property Finder is a scanner/searcher to helps track
+    new properties publications.
+
+    * Pass `--non-log` to disable the logs
+
+    * Pass `--non-only-inspect` to pull all publications
+
+    * Pass `--always-download-pictures` to force the download
+    of publication pictures
     """
     if not log:
         logging.disable(logging.CRITICAL)
@@ -126,6 +138,10 @@ def callback(log: bool = True, only_inspect: bool = True):
     def inner(settings: Settings):
         if not only_inspect:
             settings.default_publisher_settings.only_inspect = only_inspect
+        if always_download_pictures:
+            settings.default_publisher_settings.always_download_pictures = (
+                always_download_pictures
+            )
 
     inner()
 
