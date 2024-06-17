@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block include_head %}
+  <style>
+    table {
+      width: 100%;
+      border: 1px solid #ddd;
+    }
+
+    td {
+      padding: 16px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #eee;
+    }
+
+    .deleted {
+      background-color: red !important;
+    }
+  </style>
+{% endblock %}
+
+{% block header %}
+  <h1>Home - Result count {{ count }}</h1>
+{% endblock %}
+
+{% block content %}
+  <table>
+    {% for item in publications %}
+    <tr class="{% if item.deleted %} deleted {% endif %}">
+      <td>
+        {% if item.deleted %}
+          <h1>DELETED</h1>
+        {% endif %}
+        <h2>{{ item.description }}</h2>
+        <h3>(<a href="{{ url_for('detail.index', url=item.url) }}" target="_blank">Open Picture</a>) - {{ item.address }}</h3>
+        <img class="print" src="{{ printscreen_map[item.url] }}">
+        <h4>{{ item.publisher }} / {{ item.broker }} | {{ item.proposal }} / {{ item.type }}</h4>
+      </td>
+      <td>
+      <h3>Prices</h3>
+      <table>
+        <tr>
+          <td>buy_price:</td>
+          <td>{{ item.buy_price|e }}</td>
+        </tr>
+        <tr>
+          <td>rent_price:</td>
+          <td>{{ item.rent_price|e }}</td>
+        </tr>
+        <tr>
+          <td>iptu_tax:</td>
+          <td>{{ item.iptu_tax|e }}</td>
+        </tr>
+        <tr>
+          <td>condominium_fee:</td>
+          <td>{{ item.condominium_fee|e }}</td>
+        </tr>
+      </table>
+      <h3>Other infos</h3>
+      <table>
+        <tr>
+          <td>floor:</td>
+          <td>{{ item.floor|e }}</td>
+        </tr>
+      </table>
+      </td>
+      <td>
+        <p>
+          <a href="{{ item.url }}" target="_blank">Open External</a>
+        </p>
+        <p>
+          <button>Favorite</button>
+          <button>Hide</button>
+        </p>
+        <h2>Date times</h2>
+        <table>
+          <tr>
+            <td>created_at:</td>
+            <td>{{ item.created_at|e }}</td>
+          </tr>
+          <tr>
+            <td>updated_at:</td>
+            <td>{{ item.updated_at|e }}</td>
+          </tr>
+          <tr>
+            <td>publication_created_at:</td>
+            <td>{{ item.publication_created_at|e }}</td>
+          </tr>
+          <tr>
+            <td>publication_updated_at:</td>
+            <td>{{ item.publication_updated_at|e }}</td>
+          </tr>
+        </table>
+      <td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

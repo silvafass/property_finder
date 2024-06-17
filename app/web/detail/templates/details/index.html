@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block include_head %}
+  <style>
+    .print {
+      width: 50%;
+    }
+  </style>
+{% endblock %}
+
+{% block header %}
+  <h1>{% block title %}{{ publication.description }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <img class="print" src="{{ picture }}">
+{% endblock %}
