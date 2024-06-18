@@ -370,7 +370,7 @@ class ZapImoveis(Publisher):
     website: str = "https://www.zapimoveis.com.br/"
     searcherTypes: type[Searcher] = set(
         [
-            BuySearcher,
+            # BuySearcher,
             RentSearcher,
         ]
     )
@@ -520,7 +520,7 @@ class ZapImoveis(Publisher):
             await page.locator(
                 ".image-container .image-container__item"
             ).first.click()
-            await PageHelper.wait_for_timeout(page, 2 * 1000)
+            await PageHelper.wait_for_timeout(page, 1 * 1000)
 
     async def playground(self) -> Self:
         pass

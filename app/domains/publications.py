@@ -71,7 +71,7 @@ def already_have_photo(
 ) -> bool:
     with session:
         return session.exec(
-            select(col(PropertyPublication.url).is_not(None)).where(
+            select(col(PropertyPublication.picture).is_not(None)).where(
                 PropertyPublication.url == url
             )
         ).first()
