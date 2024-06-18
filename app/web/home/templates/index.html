@@ -18,11 +18,111 @@
     .deleted {
       background-color: red !important;
     }
+    body {font-family: Arial, Helvetica, sans-serif;}
+    * {box-sizing: border-box;}
+
+    .form-inline {
+      display: flex;
+      flex-flow: row wrap;
+      align-items: center;
+    }
+
+    .form-inline label {
+      margin: 5px 10px 5px 0;
+    }
+
+    .form-inline input {
+      vertical-align: middle;
+      margin: 5px 10px 5px 0;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+    }
+
+    .form-inline button {
+      padding: 10px 20px;
+      background-color: dodgerblue;
+      border: 1px solid #ddd;
+      color: white;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .form-inline button:hover {
+      background-color: royalblue;
+    }
+
+    @media (max-width: 800px) {
+      .form-inline input {
+        margin: 10px 0;
+      }
+
+      .form-inline {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    .full {
+      width: 100%;
+      label {
+        width: 10%;
+      }
+      input {
+        width: 90%;
+      }
+    }
   </style>
 {% endblock %}
 
 {% block header %}
   <h1>Home - Result count {{ count }}</h1>
+  <form class="form-inline" action="{{ url_for('home.index') }}">
+    <div class="full">
+      <label for="like">Like:</label>
+      <input type="search" id="like" placeholder="like" name="like" value="{{ filter.like }}">
+    </div>
+
+
+    <label for="created_at">created_at:</label>
+    <input type="date" id="created_at" placeholder="created_at" name="created_at" value="{{ filter.created_at }}">
+    <label for="updated_at">updated_at:</label>
+    <input type="date" id="updated_at" placeholder="updated_at" name="updated_at" value="{{ filter.updated_at }}">
+    <label for="publication_created_at">publication_created_at:</label>
+    <input type="date" id="publication_created_at" placeholder="publication_created_at" name="publication_created_at" value="{{ filter.publication_created_at }}">
+    <label for="publication_updated_at">publication_updated_at:</label>
+    <input type="date" id="publication_updated_at" placeholder="publication_updated_at" name="publication_updated_at" value="{{ filter.publication_updated_at }}">
+
+    <label for="deleted">
+      <input type="checkbox" id="deleted" placeholder="deleted" name="deleted" {{ "checked" if filter.deleted else "" }} value="{{ 0 if filter.deleted == 1 else 1 }}">
+      deleted
+    </label>
+    <label for="hidden">
+      <input type="checkbox" id="hidden" placeholder="hidden" name="hidden" {{ "checked" if filter.hidden else "" }} value="{{ 0 if filter.hidden == 1 else 1 }}">
+      hidden
+    </label>
+    <label for="favorited">
+      <input type="checkbox" id="favorited" placeholder="favorited" name="favorited" {{ "checked" if filter.favorited else "" }} value="{{ 0 if filter.favorite == 1 else 1 }}">
+      favorited
+    </label>
+
+    <div>
+      <label for="order_by">Order by:</label>
+      <select name="order_by" id="order_by">
+        <option value="created_at" {{ "selected" if filter.order_by == "created_at" else "" }}>created_at</option>
+        <option value="updated_at" {{ "selected" if filter.order_by == "updated_at" else "" }}>updated_at</option>
+        <option value="publication_created_at" {{ "selected" if filter.order_by == "publication_created_at" else "" }}>publication_created_at</option>
+        <option value="publication_updated_at" {{ "selected" if filter.order_by == "publication_updated_at" else "" }}>publication_updated_at</option>
+      </select>
+      <select name="direction" id="direction">
+        <option value="DESC" {{ "selected" if filter.direction == "DESC" else "" }}>DESC</option>
+        <option value="ASC" {{ "selected" if filter.direction == "ASC" else "" }}>ASC</option>
+      </select>
+
+      <button type="submit">search</button>
+      <a href="{{ url_for('home.index') }}">Clear</a>
+    </div>
+  </form>
 {% endblock %}
 
 {% block content %}
@@ -34,9 +134,9 @@
           <h1>DELETED</h1>
         {% endif %}
         <h2>{{ item.description }}</h2>
-        <h3>(<a href="{{ url_for('detail.index', url=item.url) }}" target="_blank">Open Picture</a>) - {{ item.address }}</h3>
+        <h3>{{ item.address }}</h3>
         <img class="print" src="{{ printscreen_map[item.url] }}">
-        <h4>{{ item.publisher }} / {{ item.broker }} | {{ item.proposal }} / {{ item.type }}</h4>
+        <h4>(<a href="{{ url_for('detail.index', url=item.url) }}" target="_blank">Open Picture</a>) - {{ item.publisher }} / {{ item.broker }} | {{ item.proposal }} / {{ item.type }}</h4>
       </td>
       <td>
       <h3>Prices</h3>
@@ -71,8 +171,20 @@
           <a href="{{ item.url }}" target="_blank">Open External</a>
         </p>
         <p>
-          <button>Favorite</button>
-          <button>Hide</button>
+          <div class="form-inline">
+            <form action="{{ url_for('home.favorited') }}">
+              <input type="hidden" name="url" value="{{ item.url }}">
+              <input type="hidden" name="favorited" value="{{ 0 if item.favorited else 1 }}">
+              <input type="hidden" name="filter" value="{{ dict(filter) }}">
+              <button value="{{ item.favorited }}" type="submit">{% if item.favorited %}Unfavorite it{% else %}Favorite it{% endif %}</button>
+            </form>
+            <form action="{{ url_for('home.hidden') }}">
+              <input type="hidden" name="url" value="{{ item.url }}">
+              <input type="hidden" name="hidden" value="{{ 0 if item.hidden else 1 }}">
+              <input type="hidden" name="filter" value="{{ dict(filter) }}">
+              <button type="submit">{% if item.hidden %}Unhide it{% else %}Hide it{% endif %}</button>
+            </form>
+          </div>
         </p>
         <h2>Date times</h2>
         <table>

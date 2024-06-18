@@ -49,5 +49,7 @@ class PropertyPublication(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    to_inspect: Optional[bool] = None
-    deleted: Optional[bool] = None
+    to_inspect: Optional[bool] = False
+    deleted: Optional[bool] = False
+    hidden: Optional[bool] = False
+    favorited: Optional[bool] = False

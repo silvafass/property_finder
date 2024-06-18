@@ -126,7 +126,9 @@ class ConditionsSearch(BaseModel):
     created_at: Optional[DateTimeSearch] = None
     updated_at: Optional[DateTimeSearch] = None
     to_inspect: Optional[bool] = None
-    deleted: Optional[bool] = None
+    deleted: Optional[bool] = False
+    hidden: Optional[bool] = False
+    favorited: Optional[bool] = False
 
 
 @inject
