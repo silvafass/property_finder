@@ -370,7 +370,7 @@ class ZapImoveis(Publisher):
     website: str = "https://www.zapimoveis.com.br/"
     searcherTypes: type[Searcher] = set(
         [
-            # BuySearcher,
+            BuySearcher,
             RentSearcher,
         ]
     )
