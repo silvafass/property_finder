@@ -8,9 +8,9 @@ detail_page = Blueprint("detail", __name__, template_folder="templates")
 @detail_page.route("/")
 async def index():
     publication = py_url(request.args["url"])
-    publication_picture_encoded = base64.b64encode(publication.picture).decode(
-        "utf-8"
-    )
+    publication_picture_encoded = base64.b64encode(
+        publication.picture or b""
+    ).decode("utf-8")
     picture = "data:image/jpeg;base64," + publication_picture_encoded
 
     return render_template(

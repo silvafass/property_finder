@@ -5,7 +5,10 @@ from app.domains.publications import (
     SearchOrderBy,
     DateTimeSearch,
     save as publication_save,
+    FloatRangeSearch,
+    IntRangeSearch,
 )
+from app.domains.models import ProposalType, PropertyType
 import base64
 from datetime import datetime
 from ast import literal_eval
@@ -24,30 +27,35 @@ async def index():
     if filter.get("favorited") is not None:
         conditions.favorited = bool(int(filter.get("favorited")))
 
-    if filter.get("created_at"):
-        created_at = datetime.strptime(filter.get("created_at"), "%Y-%m-%d")
-        conditions.created_at = DateTimeSearch(
-            back=datetime.now() - created_at
-        )
-    if filter.get("updated_at"):
-        updated_at = datetime.strptime(filter.get("updated_at"), "%Y-%m-%d")
-        conditions.updated_at = DateTimeSearch(
-            back=datetime.now() - updated_at
-        )
-    if filter.get("publication_created_at"):
-        publication_created_at = datetime.strptime(
-            filter.get("publication_created_at"), "%Y-%m-%d"
-        )
-        conditions.publication_created_at = DateTimeSearch(
-            back=datetime.now() - publication_created_at
-        )
-    if filter.get("publication_updated_at"):
-        publication_updated_at = datetime.strptime(
-            filter.get("publication_updated_at"), "%Y-%m-%d"
-        )
-        conditions.publication_updated_at = DateTimeSearch(
-            back=datetime.now() - publication_updated_at
-        )
+    if bool(int(filter.get("buy_and_rent", 0))):
+        conditions.buy_price = FloatRangeSearch(back=1)
+        conditions.rent_price = FloatRangeSearch(back=1)
+
+    for date_field in [
+        "created_at",
+        "updated_at",
+        "publication_created_at",
+        "publication_updated_at",
+    ]:
+        if filter.get(date_field):
+            date_value = datetime.strptime(filter.get(date_field), "%Y-%m-%d")
+            setattr(
+                conditions,
+                date_field,
+                DateTimeSearch(back=datetime.now() - date_value),
+            )
+
+    for str_field in ["proposal", "type"]:
+        if filter.get(str_field):
+            setattr(conditions, str_field, filter.get(str_field))
+
+    for int_field in ["bedrooms", "bathrooms", "floor"]:
+        if filter.get(int_field):
+            setattr(
+                conditions,
+                int_field,
+                IntRangeSearch(back=int(filter.get(int_field))),
+            )
 
     ordering_list = []
     if filter.get("order_by"):
@@ -79,6 +87,8 @@ async def index():
         publications=publications,
         printscreen_map=printscreen_map,
         filter=filter,
+        proposal_types=[*ProposalType],
+        property_types=[*PropertyType],
     )
 
 

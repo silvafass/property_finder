@@ -72,6 +72,12 @@
         width: 90%;
       }
     }
+
+    select {
+      font-size: 0.9rem;
+      padding: 2px 5px;
+      margin-left: 5px;
+    }
   </style>
 {% endblock %}
 
@@ -102,9 +108,33 @@
       hidden
     </label>
     <label for="favorited">
-      <input type="checkbox" id="favorited" placeholder="favorited" name="favorited" {{ "checked" if filter.favorited else "" }} value="{{ 0 if filter.favorite == 1 else 1 }}">
+      <input type="checkbox" id="favorited" placeholder="favorited" name="favorited" {{ "checked" if filter.favorited else "" }} value="{{ 0 if filter.favorited == 1 else 1 }}">
       favorited
     </label>
+    <label for="buy_and_rent">
+      <input type="checkbox" id="buy_and_rent" placeholder="buy_and_rent" name="buy_and_rent" {{ "checked" if filter.buy_and_rent else "" }} value="{{ 0 if filter.buy_and_rent == 1 else 1 }}">
+      buy_and_rent
+    </label>
+
+    <select name="proposal" id="proposal">
+      <option value="">--proposal_type--</option>
+      {% for type in proposal_types %}
+        <option value="{{ type }}" {{ "selected" if filter.proposal == type else "" }}>{{ type }}</option>
+      {% endfor %}
+    </select>
+    <select name="type" id="type">
+      <option value="">--property_type--</option>
+      {% for type in property_types %}
+        <option value="{{ type }}" {{ "selected" if filter.type == type else "" }}>{{ type }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="bedrooms">bedrooms:</label>
+    <input type="number" id="bedrooms" placeholder="bedrooms" name="bedrooms" value="{{ filter.bedrooms }}">
+    <label for="bathrooms">bathrooms:</label>
+    <input type="number" id="bathrooms" placeholder="bathrooms" name="bathrooms" value="{{ filter.bathrooms }}">
+    <label for="floor">floor:</label>
+    <input type="number" id="floor" placeholder="floor" name="floor" value="{{ filter.floor }}">
 
     <div>
       <label for="order_by">Order by:</label>
@@ -113,6 +143,21 @@
         <option value="updated_at" {{ "selected" if filter.order_by == "updated_at" else "" }}>updated_at</option>
         <option value="publication_created_at" {{ "selected" if filter.order_by == "publication_created_at" else "" }}>publication_created_at</option>
         <option value="publication_updated_at" {{ "selected" if filter.order_by == "publication_updated_at" else "" }}>publication_updated_at</option>
+        <option value="address" {{ "selected" if filter.order_by == "address" else "" }}>address</option>
+        <option value="details" {{ "selected" if filter.order_by == "details" else "" }}>details</option>
+        <option value="proposal" {{ "selected" if filter.order_by == "proposal" else "" }}>proposal</option>
+        <option value="type" {{ "selected" if filter.order_by == "type" else "" }}>type</option>
+        <option value="square_meter" {{ "selected" if filter.order_by == "square_meter" else "" }}>square_meter</option>
+        <option value="bedrooms" {{ "selected" if filter.order_by == "bedrooms" else "" }}>bedrooms</option>
+        <option value="bathrooms" {{ "selected" if filter.order_by == "bathrooms" else "" }}>bathrooms</option>
+        <option value="floor" {{ "selected" if filter.order_by == "floor" else "" }}>floor</option>
+        <option value="buy_price" {{ "selected" if filter.order_by == "buy_price" else "" }}>buy_price</option>
+        <option value="rent_price" {{ "selected" if filter.order_by == "rent_price" else "" }}>rent_price</option>
+        <option value="iptu_tax" {{ "selected" if filter.order_by == "iptu_tax" else "" }}>iptu_tax</option>
+        <option value="condominium_fee" {{ "selected" if filter.order_by == "condominium_fee" else "" }}>condominium_fee</option>
+        <option value="url" {{ "selected" if filter.order_by == "url" else "" }}>url</option>
+        <option value="printscreen" {{ "selected" if filter.order_by == "printscreen" else "" }}>printscreen</option>
+        <option value="picture" {{ "selected" if filter.order_by == "picture" else "" }}>picture</option>
       </select>
       <select name="direction" id="direction">
         <option value="DESC" {{ "selected" if filter.direction == "DESC" else "" }}>DESC</option>
