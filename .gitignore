@@ -2,3 +2,4 @@
 *.db
 *.pyc
 *.sqbpro
+config/default.yaml
