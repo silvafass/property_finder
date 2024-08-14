@@ -1,0 +1,26 @@
+only_inspect: false
+always_download_pictures: false
+# The base search section is where you can define the common search that should be applied to all searches
+base_search:
+  locations:
+  - Avenida Paulista, São Paulo - SP
+  - Copacabana, Rio de Janeiro - RJ
+  - Fortaleza - CE
+  property_types:
+  - Apartamento
+  - Casa
+  - Sobrado
+  - Casa de Condomínio
+  maximum_condominium_fee: 500
+  include_condominium_fee: True
+  minimum_square_meter: 75
+  bedrooms: [2, 3]
+# You can also override the base search settings for each specific type of search.
+buying_search:
+  maximum_price: 500000
+  bedrooms: [3, 4]
+  property_types:
+  - Casa
+  - Casa de Condomínio
+renting_search:
+  maximum_price: 3000
