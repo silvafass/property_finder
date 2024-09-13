@@ -7,3 +7,4 @@ typer==0.12.3
 opencv-python==4.10.0.82
 Flask[async]==3.0.3
 pip==24.0
+numpy<2

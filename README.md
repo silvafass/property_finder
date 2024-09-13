@@ -9,7 +9,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Dependencies installation
-pip -r requirements.txt
+pip install -r requirements.txt
 
 # Python path setup
 export PYTHONPATH=$PWD
@@ -23,13 +23,18 @@ playwright install chromium firefox
 cp config/sample.default.yaml config/default.yaml
 ```
 
+## Start web UI
+```bash
+flask --app app.web.startup run
+```
+
 ## Startup
 ```bash
-./bin/run.py
+./bin/run.py all-process
 ```
 Or by using Xvfb:
 ```bash
-xvfb-run ./bin/run.py
+xvfb-run ./bin/run.py all-process
 ```
 
 ### Usage

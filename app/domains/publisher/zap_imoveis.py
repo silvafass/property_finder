@@ -37,7 +37,10 @@ class BaseSearcher(Searcher):
 
     async def search(self, page: Page):
         base_search = self.publisher_settings.base_search
-        await page.get_by_text("Entendi").click()
+        try:
+            await page.get_by_text("Aceitar").click(timeout=5000)
+        except Exception as ex:
+            logger.warning('Button "Aceitar" is not visible: %s', str(ex))
         for location in base_search.locations:
             await page.get_by_label("Onde deseja morar?").fill(location)
             await page.get_by_label(location).check()
@@ -389,7 +392,7 @@ class ZapImoveis(Publisher):
 
             logger.info("Scrolling down to the end of the page...")
 
-            result_card_locator = page.locator("a.result-card")
+            result_card_locator = page.locator("a[itemprop=url]")
             async for result_card in PageHelper.scroll_to_end(
                 page,
                 pixels_to_scroll=200,
